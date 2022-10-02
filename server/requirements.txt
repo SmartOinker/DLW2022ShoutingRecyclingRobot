@@ -1,0 +1,8 @@
+flask
+peewee
+qrcode
+gunicorn
+oauthlib
+requests
+pyopenssl
+pillow
