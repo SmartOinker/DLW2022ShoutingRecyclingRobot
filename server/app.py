@@ -22,8 +22,8 @@ class Users(BaseModel):
 class Detect(BaseModel):
     bin_id = IntegerField(null=False)
 
-dbmanager.drop_tables([Users])
-dbmanager.create_tables([Users])
+dbmanager.drop_tables([Users, Detect])
+dbmanager.create_tables([Users, Detect])
 
 app = Flask("point")
 GOOGLE_CLIENT_ID = "420123632397-rvsdilapasadjd6imk7sfkp2stc8tdmk.apps.googleusercontent.com"
@@ -68,16 +68,29 @@ def qr(uid):
 
 @app.route('/bin/<bin>', methods=['GET', 'POST'])
 def bin(bin):
-    Detect.create(bin_id = int(bin))
+    dbmanager.execute_sql(f"INSERT INTO detect (bin_id) VALUES ({bin})")
     return "success"
 
 @app.route('/clear/', methods=['GET', 'POST'])
 def delete_all():
     dbmanager.drop_tables([Users, Detect])
     dbmanager.create_tables([Users, Detect])
+    return "success"
 
+@app.route('/debug/', methods=['GET', 'POST'])
+def debug():
+    temp = Detect.select()
+    S = ""
+    for i in temp:
+        S += str(i.__dict__["__data__"]) + "\n"
+    return S
 @app.route('/add/<uid>/<bin>', methods=['GET', 'POST'])
 def add(uid, bin):
+    if(uid.isnumeric() == False):
+        return "wrong uid"
+    user = Users.select().where(Users.id == uid)
+    if(user.exists() == False):
+        return "invalid uid"
     bin = int(bin)
     bins = Detect.select().where(Detect.bin_id == bin)
     temp = 0
@@ -86,10 +99,9 @@ def add(uid, bin):
     for i in bins:
         i.delete_instance()
     uid = str(uid)
-    point = 5*temp
-    user = Users.select().where(Users.id == uid).get()
-    user.point = str(int(user.point) + point)
-    dbmanager.execute_sql(f'UPDATE users SET point="{user.point}" WHERE id= "{user.id}"')
+    user = user.get()
+    point = str(5*temp + int(user.point))
+    dbmanager.execute_sql(f'UPDATE users SET point="{point}" WHERE id= "{uid}"')
     return "success"
 
 @app.route("/")
